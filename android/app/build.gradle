@@ -1,0 +1,134 @@
+def localProperties = new Properties()
+def localPropertiesFile = rootProject.file('local.properties')
+if (localPropertiesFile.exists()) {
+    localPropertiesFile.withReader('UTF-8') { reader ->
+        localProperties.load(reader)
+    }
+}
+
+def flutterRoot = localProperties.getProperty('flutter.sdk')
+if (flutterRoot == null) {
+    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
+}
+
+def flutterVersionCode = localProperties.getProperty('flutter.versionCode')
+if (flutterVersionCode == null) {
+    flutterVersionCode = '1'
+}
+
+def flutterVersionName = localProperties.getProperty('flutter.versionName')
+if (flutterVersionName == null) {
+    flutterVersionName = '1.0'
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+apply plugin: 'com.android.application'
+// START: FlutterFire Configuration
+apply plugin: 'com.google.gms.google-services'
+apply plugin: 'com.google.firebase.crashlytics'
+// END: FlutterFire Configuration
+apply plugin: 'kotlin-android'
+apply from: "$flutterRoot/packages/flutter_tools/gradle/flutter.gradle"
+
+
+android {
+    compileSdkVersion flutter.compileSdkVersion
+    ndkVersion "25.1.8937393"
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
+    }
+
+
+    defaultConfig {
+        minSdkVersion 21
+        targetSdkVersion flutter.targetSdkVersion
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+//        ndk { abiFilters 'x86', 'armeabi-v7a', 'arm64-v8a' }
+    }
+
+    signingConfigs {
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
+            storePassword keystoreProperties['storePassword']
+        }
+    }
+
+    buildTypes {
+        release {
+            // Signing with the debug keys for now, so `flutter run --release` works.
+            signingConfig signingConfigs.release
+            ndk {
+                debugSymbolLevel 'FULL'
+            }
+            firebaseCrashlytics {
+                nativeSymbolUploadEnabled true
+            }
+        }
+        debug {
+            firebaseCrashlytics {
+                nativeSymbolUploadEnabled false
+            }
+        }
+    }
+
+    flavorDimensions "app"
+
+    productFlavors {
+        hindi_bhajan {
+            dimension "app"
+            applicationId "com.delta.hindi_bhajan"
+            manifestPlaceholders = [adsId: "your-admob-account-id"]
+            firebaseCrashlytics {
+                strippedNativeLibsDir '/Users/mehulmakwana/Desktop/Projects/7Delta/JunaBhajan/juna_bhajan_app/build/app/intermediates/stripped_native_libs/hindi_bhajanRelease/out/lib'
+                unstrippedNativeLibsDir '/Users/mehulmakwana/Desktop/Projects/7Delta/JunaBhajan/juna_bhajan_app/build/app/intermediates/merged_native_libs/hindi_bhajanRelease/out/lib'
+            }
+        }
+        juna_bhajan {
+            dimension "app"
+            applicationId "com.delta.juna_bhajan"
+            manifestPlaceholders = [adsId: "your-admob-account-id"]
+            firebaseCrashlytics {
+                strippedNativeLibsDir '/Users/mehulmakwana/Desktop/Projects/7Delta/JunaBhajan/juna_bhajan_app/build/app/intermediates/stripped_native_libs/juna_bhajanRelease/out/lib'
+                unstrippedNativeLibsDir '/Users/mehulmakwana/Desktop/Projects/7Delta/JunaBhajan/juna_bhajan_app/build/app/intermediates/merged_native_libs/juna_bhajanRelease/out/lib'
+            }
+        }
+    }
+    tasks.whenTaskAdded { task ->
+        if (!task.name.contains('Debug') && task.name.startsWith('assemble') && task.name != "assembleReleaseAndroidTest" && task.name != "assembleDebugAndroidTest") {
+            task.finalizedBy "uploadCrashlyticsSymbolFile" + task.name.substring('assemble'.length())
+        }
+    }
+}
+
+flutter {
+    source '../..'
+}
+
+dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    // Import the BoM for the Firebase platform
+    implementation platform('com.google.firebase:firebase-bom:26.7.0')
+
+    // Add the dependencies for the Crashlytics NDK and Analytics libraries
+    // When using the BoM, you don't specify versions in Firebase library dependencies
+    implementation 'com.google.firebase:firebase-crashlytics-ndk'
+    implementation 'com.google.firebase:firebase-analytics'
+}
